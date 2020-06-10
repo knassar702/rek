@@ -2,6 +2,7 @@
 from queue import Queue
 from threading import Thread
 from sys import stdin,exit
+from bs4 import BeautifulSoup
 from optparse import OptionParser
 from requests import packages,Session,adapters
 q = Queue()
@@ -16,12 +17,12 @@ optp.add_option("--redirect",dest='redirect',action="store_true")
 optp.add_option("-h","--help",dest='help',action='store_true')
 opts, args = optp.parse_args()
 helper= (r'''
- , __       _   
-/|/  \     | |  
- |___/  _  | |  
- | \   |/  |/_) 
+ , __       _
+/|/  \     | |
+ |___/  _  | |
+ | \   |/  |/_)
  |  \_/|__/| \_/
-                                 
+
 # Coded By : Khaled Nassar @knassar702
 
 Options:
@@ -29,11 +30,13 @@ Options:
 	--threads   | Max number of concurrent HTTP(s) requests (default: 10)
 	--timeout   | Seconds to wait before timeout connection (default: 4)
     --redirect  | Allow Redirects
+
 Examples:
 	$ cat domains.txt | python3 Rek.py
 	$ cat domains.txt | python3 Rek.py --timeout=1000
 	$ cat domains.txt | python3 Rek.py --threads=60
 	$ cat domains.txt | python3 Rek.py --redirect
+	$ cat domains.txt | python3 -u Rek.py | tee data.txt
       ''')
 if opts.help:
 	print(helper)
@@ -57,16 +60,16 @@ def opener(domain,redirect=False,timeout=4):
 			elif domain.startswith('https://'): r.mount('http://', adapter)
 			r.verify = False
 			r.allow_redirects = False
-			r = r.get(f'{domain}',timeout=timeout,allow_redirects=redirect)
-			print(f'[{r.status_code}] {domain}',end='')
-		except:
-			print(f'[connection error] {domain}',end='')
-		try:
-			print(f' | Server : {r.headers["server"]}')
+			r = r.get(f'{domain}',timeout=timeout,verify=False,allow_redirects=redirect)
+			try:
+				server = f"[{r.headers['Server']}]"
+			except:
+				server = '[]'
+			bs = BeautifulSoup(r.content,'lxml')
+			title = bs.title.text
+			print(f"{domain} | {r.status_code} | {title} | {server}")
 		except:
 			pass
-		finally:
-			print(f'\n{"*"*6}')
 def threader():
 	while True:
 		item = q.get()
